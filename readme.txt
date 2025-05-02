@@ -50,9 +50,10 @@ Flattened files strip formulas and keep only visible values, similar to "Paste S
 
 == Screenshots ==
 
-1. Admin spreadsheet configuration screen.
-2. Embedded table on the front end with sorting and filtering.
-3. Admin preview and refresh controls.
+1. Admin spreadsheet creation screen.
+2. Admin worksheet preview.
+3. Admin formatted table preview.
+4. Frontend formatted table with additional controls.
 
 == Changelog ==
 
