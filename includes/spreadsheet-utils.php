@@ -12,6 +12,8 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     ];
     $args = wp_parse_args($args, $defaults);
 
+    $table_id_safe = esc_attr($table_id); // Sanitize table ID
+
     $posts = get_posts([
         'post_type' => 'esv_spreadsheet',
         'posts_per_page' => 1,
@@ -20,7 +22,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     ]);
 
     if (empty($posts)) {
-        return "<p><strong>Error:</strong> Spreadsheet with ID <strong>$table_id</strong> not found.</p>";
+        return "<p><strong>Error:</strong> Spreadsheet with ID <strong>" . esc_html($table_id) . "</strong> not found.</p>";
     }
 
     $post = $posts[0];
@@ -29,8 +31,11 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     $max_rows = intval($args['max_rows']);
 
     $spreadsheet_name = get_the_title($post);
-    $url = $meta['esv_url'][0] ?? '';
-    $worksheet_name = $meta['esv_worksheet'][0] ?? 'Sheet1';
+    $spreadsheet_name_safe = esc_html($spreadsheet_name); // Escape title
+
+    $url = isset($meta['esv_url'][0]) ? esc_url($meta['esv_url'][0]) : '';
+    $worksheet_name = isset($meta['esv_worksheet'][0]) ? sanitize_text_field($meta['esv_worksheet'][0]) : 'Sheet1';
+
     $header_row = intval($meta['esv_header_row'][0] ?? 1);
     $start_row = intval($meta['esv_start_row'][0] ?? ($header_row + 1));
     $end_row = intval($meta['esv_end_row'][0] ?? 0);
@@ -52,7 +57,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     if (empty($flattened_path) || !file_exists($flattened_path)) {
         return "<p><strong>Error:</strong> No flattened spreadsheet found. Please try saving again in the admin to generate a processed version.</p>";
     }
-    
+
     try {
         $reader = IOFactory::createReaderForFile($flattened_path);
         $reader->setReadDataOnly(true);
@@ -60,34 +65,29 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
         $spreadsheet = $reader->load($flattened_path);
     } catch (Exception $e) {
         return "<p><strong>Error:</strong> Failed to read flattened spreadsheet: " . esc_html($e->getMessage()) . "</p>";
-    }    
-    
+    }
+
     $sheet = $spreadsheet->getSheetByName($worksheet_name);
     if (!$sheet) {
-        return "<p><strong>Error:</strong> Worksheet '$worksheet_name' not found.</p>";
+        return "<p><strong>Error:</strong> Worksheet '" . esc_html($worksheet_name) . "' not found.</p>";
     }
 
     $highestRow = $end_row ?: $sheet->getHighestRow();
     $highestColumnIndex = $end_col ?: Coordinate::columnIndexFromString($sheet->getHighestColumn());
 
-    // Start output
     ob_start();
 
-    // Info section (View / Download / Modified)
     if ($args['sticky_header']) {
-        // Only show for non-table preview
-
         $show_download = get_post_meta($post->ID, 'esv_show_download_link', true);
-        echo '<h3>' . $spreadsheet_name;
+        echo '<h3>' . $spreadsheet_name_safe;
         if ($show_download) {
             echo ' <a href="' . esc_url($url) . '" download>Download</a>';
         }
         echo '</h3>';
-        echo '<div class="esv-meta">';
-        echo '</div>';
-    
+        echo '<div class="esv-meta"></div>';
+
         echo '<div class="esv-table-container">';
-        echo '<p>Right click on a column to access sorting and filtering functionality. ' . ($max_rows !== 0 ? 'A maximum of ' . $highestRow . ' rows are displayed. ': '') . '</p>';
+        echo '<p>Right click on a column to access sorting and filtering functionality. ' . ($max_rows !== 0 ? 'A maximum of ' . esc_html($highestRow) . ' rows are displayed. ' : '') . '</p>';
 
         $show_refresh = get_post_meta($post->ID, 'esv_show_refresh_button', true);
         if ($show_refresh) {
@@ -100,8 +100,8 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
                     </button>';
         }
 
-        echo '<i>Last Modified: ' . date('Y-m-d H:i:s', filemtime($flattened_path)) . '</i>';
-        echo '<div id="esv-refresh-status-' . esc_attr($post->ID) . '" class="esv-refresh-status"></div>';    
+        echo '<i>Last Modified: ' . esc_html(date('Y-m-d H:i:s', filemtime($flattened_path))) . '</i>';
+        echo '<div id="esv-refresh-status-' . esc_attr($post->ID) . '" class="esv-refresh-status"></div>';
     }
 
     echo '<table class="esv-table' . ($args['sticky_header'] ? ' esv-sticky-header' : '') . '" data-table-id="' . esc_attr($table_id) . '">';
@@ -110,7 +110,6 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     for ($col = $start_col; $col <= $highestColumnIndex; $col++) {
         if (in_array($col, $excluded_cols)) continue;
 
-        $cell = $sheet->getCell(Coordinate::stringFromColumnIndex($col) . $header_row);
         $header = $custom_headers[$col] ?? $sheet->getCell(Coordinate::stringFromColumnIndex($col) . $header_row)->getFormattedValue();
         echo '<th>' . esc_html($header) . '</th>';
     }
@@ -120,15 +119,15 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     foreach ($sheet->getRowIterator($start_row, $highestRow) as $rowObj) {
         $row = $rowObj->getRowIndex();
         if (in_array($row, $excluded_rows)) continue;
-    
-        echo '<tr>';   
+
+        echo '<tr>';
         foreach ($rowObj->getCellIterator() as $cell) {
             $colLetter = $cell->getColumn();
             $col = Coordinate::columnIndexFromString($colLetter);
-                
+
             if ($col < $start_col || $col > $highestColumnIndex) continue;
             if (in_array($col, $excluded_cols)) continue;
-    
+
             $raw_value = $cell->getValue();
             $hyperlink = $cell->hasHyperlink() ? $cell->getHyperlink()->getUrl() : null;
             $format_type = $format_map[$col] ?? 0;
@@ -137,7 +136,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
             $escaped = esc_html($display);
             $max_width = intval($width_map[$col] ?? 500);
 
-            echo '<td style="max-width:' . $max_width . 'px;">';
+            echo '<td style="max-width:' . esc_attr($max_width) . 'px;">';
             echo '<div class="cell-text" title="' . $escaped . '">';
             echo $hyperlink ? '<a href="' . esc_url($hyperlink) . '" target="_blank">' . $escaped . '</a>' : $escaped;
             echo '</div></td>';

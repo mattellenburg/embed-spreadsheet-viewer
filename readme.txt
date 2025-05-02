@@ -58,7 +58,10 @@ Flattened files strip formulas and keep only visible values, similar to "Paste S
 == Changelog ==
 
 = 1.0 =
-* Initial release with full spreadsheet embedding, customization, and refresh support.
+* Initial release
+
+GitHub Repository: https://github.com/mattellenburg/embed-spreadsheet-viewer
+
 
 == Upgrade Notice ==
 

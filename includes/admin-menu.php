@@ -41,7 +41,7 @@ function process_excel_values_ajax() {
         wp_send_json_error(array('message' => 'Excel URL and sheet name are required.'));
     }
     
-    $excel_url = sanitize_text_field($_POST['excel_url']);
+    $excel_url = esc_url_raw($_POST['excel_url']);
     $sheet_name = sanitize_text_field($_POST['sheet_name']);
     $prefix = isset($_POST['prefix']) ? sanitize_text_field($_POST['prefix']) : '';
     
