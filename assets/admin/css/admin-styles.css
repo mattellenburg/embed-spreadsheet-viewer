@@ -1,0 +1,118 @@
+html {
+    scroll-behavior: smooth;
+}
+
+/* Style for spreadsheet preview scrolling inside admin panel */
+.esv-preview-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    margin-top: 10px;
+}
+
+#esv-preview-container {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+    width: 100%; /* Force container to take full width of parent */
+}
+
+#esv-preview-container table {
+    width: 100%; /* Make the table take full width of container */
+    table-layout: fixed; /* Prevents the table from expanding based on content */
+    border-collapse: collapse; /* Ensures borders don't double up */
+}
+
+#esv-preview-container table th,
+#esv-preview-container table td {
+    border: 1px solid #ddd; /* Add border to all cells */
+    padding: 8px; /* Add some padding for better readability */
+}
+
+#esv-preview-container table th {
+    background-color: #f2f2f2; /* Light background for header cells */
+    border-bottom: 2px solid #ccc; /* Slightly stronger bottom border for headers */
+}
+
+/* For WordPress admin pages with the .form-table class */
+.form-table td {
+    max-width: 800px; /* Limit the width of the td cell */
+}
+
+/* Loading spinner (better version) */
+.esv-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #555;
+}
+
+.esv-spinner::after {
+    content: "";
+    margin-top: 10px;
+    width: 32px;
+    height: 32px;
+    border: 4px solid #ccc;
+    border-top-color: #0073aa; /* WordPress blue */
+    border-radius: 50%;
+    animation: esv-spin 1s linear infinite;
+}
+
+/* Spin keyframes */
+@keyframes esv-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Raw Preview Table Styling */
+#esv-preview-container .esv-preview-scroll table {
+    width: auto; /* Auto width based on content */
+    min-width: 600px;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+}
+
+#esv-preview-container .esv-preview-scroll th,
+#esv-preview-container .esv-preview-scroll td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#esv-preview-container .esv-preview-scroll th {
+    background: #f7f7f7;
+    font-weight: bold;
+}
+
+.esv-highlight {
+    animation: esvPulseHighlight 2s ease;
+}
+
+@keyframes esvPulseHighlight {
+    0% { background-color: #fff3cd; }
+    50% { background-color: #ffeeba; }
+    100% { background-color: transparent; }
+}
+
+.esv-glow {
+    animation: esvGlowHighlight 1.5s ease;
+}
+
+@keyframes esvGlowHighlight {
+    0% {
+        box-shadow: 0 0 0px rgba(255, 223, 0, 0);
+        background-color: #fff3cd;
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(255, 223, 0, 0.9);
+        background-color: #ffeeba;
+    }
+    100% {
+        box-shadow: 0 0 0px rgba(255, 223, 0, 0);
+        background-color: transparent;
+    }
+}
