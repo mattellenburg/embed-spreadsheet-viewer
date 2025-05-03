@@ -12,15 +12,18 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     ];
     $args = wp_parse_args($args, $defaults);
 
-    $table_id_safe = esc_attr($table_id); // Sanitize table ID
-
     $posts = get_posts([
-        'post_type' => 'esv_spreadsheet',
+        'post_type'      => 'esv_spreadsheet',
         'posts_per_page' => 1,
-        'meta_key' => 'esv_table_id',
-        'meta_value' => $table_id,
+        'meta_query'     => [
+            [
+                'key'     => 'esv_table_id',
+                'value'   => $table_id,
+                'compare' => '='
+            ]
+        ]
     ]);
-
+    
     if (empty($posts)) {
         return "<p><strong>Error:</strong> Spreadsheet with ID <strong>" . esc_html($table_id) . "</strong> not found.</p>";
     }
@@ -79,7 +82,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
 
     if ($args['sticky_header']) {
         $show_download = get_post_meta($post->ID, 'esv_show_download_link', true);
-        echo '<h3>' . $spreadsheet_name_safe;
+        echo '<h3>' . esc_attr($spreadsheet_name_safe);
         if ($show_download) {
             echo ' <a href="' . esc_url($url) . '" download>Download</a>';
         }
@@ -100,7 +103,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
                     </button>';
         }
 
-        echo '<i>Last Modified: ' . esc_html(date('Y-m-d H:i:s', filemtime($flattened_path))) . '</i>';
+        echo '&nbsp;<i>Last Modified: ' . esc_html(gmdate('Y-m-d H:i:s', filemtime($flattened_path))) . '</i>';
         echo '<div id="esv-refresh-status-' . esc_attr($post->ID) . '" class="esv-refresh-status"></div>';
     }
 
@@ -137,8 +140,8 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
             $max_width = intval($width_map[$col] ?? 500);
 
             echo '<td style="max-width:' . esc_attr($max_width) . 'px;">';
-            echo '<div class="cell-text" title="' . $escaped . '">';
-            echo $hyperlink ? '<a href="' . esc_url($hyperlink) . '" target="_blank">' . $escaped . '</a>' : $escaped;
+            echo '<div class="cell-text" title="' . esc_attr($escaped) . '">';
+            echo $hyperlink ? '<a href="' . esc_url($hyperlink) . '" target="_blank">' . esc_attr($escaped) . '</a>' : esc_attr($escaped);
             echo '</div></td>';
         }
         echo '</tr>';
@@ -183,7 +186,7 @@ function esv_format_cell($value, $type) {
                     return $value;
                 }
             }
-            return date('Y-m-d', strtotime($value));
+            return gmdate('Y-m-d', strtotime($value));
         case 3: return '$' . number_format((float)$value, 2); // Currency
         default: return $value;
     }

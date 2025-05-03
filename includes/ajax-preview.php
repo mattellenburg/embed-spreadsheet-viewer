@@ -6,20 +6,40 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 add_action('wp_ajax_esv_preview_spreadsheet', function () {
     check_ajax_referer('esv_ajax_preview', 'security');
 
-    $mode = sanitize_text_field($_POST['mode'] ?? 'worksheet');
-    $table_id = sanitize_text_field($_POST['table_id'] ?? '');
-    $worksheet_name = sanitize_text_field($_POST['worksheet'] ?? 'Sheet1');
+    // Properly validate, unslash, and sanitize mode
+    $mode = 'worksheet';
+    if (isset($_POST['mode'])) {
+        $mode = sanitize_text_field(wp_unslash($_POST['mode']));
+    }
+
+    // Properly validate, unslash, and sanitize table_id
+    $table_id = '';
+    if (isset($_POST['table_id'])) {
+        $table_id = sanitize_text_field(wp_unslash($_POST['table_id']));
+    }
+
+    // Properly validate, unslash, and sanitize worksheet
+    $worksheet_name = 'Sheet1';
+    if (isset($_POST['worksheet'])) {
+        $worksheet_name = sanitize_text_field(wp_unslash($_POST['worksheet']));
+    }
 
     if (empty($table_id)) {
         wp_send_json_error('Table ID is missing.');
     }
 
     // Get post by table_id
+    // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
     $post = get_posts([
         'post_type' => 'esv_spreadsheet',
-        'meta_key' => 'esv_table_id',
-        'meta_value' => $table_id,
         'posts_per_page' => 1,
+        'meta_query'     => [
+            [
+                'key'     => 'esv_table_id',
+                'value'   => $table_id,
+                'compare' => '='
+            ]
+        ]
     ]);
 
     if (empty($post)) {
@@ -39,7 +59,6 @@ add_action('wp_ajax_esv_preview_spreadsheet', function () {
         $reader->setLoadSheetsOnly([$worksheet_name]);
         $spreadsheet = $reader->load($flattened_path);
     } catch (Exception $e) {
-        error_log('Spreadsheet load error: ' . $e->getMessage());
         wp_send_json_error('Failed to load flattened spreadsheet: ' . esc_html($e->getMessage()));
     }
 
@@ -67,7 +86,7 @@ add_action('wp_ajax_esv_preview_spreadsheet', function () {
 
         $row_limit = min($highestRow, 10);
         for ($row = 1; $row <= $row_limit; $row++) {
-            echo '<tr><td>' . $row . '</td>';
+            echo '<tr><td>' . esc_attr($row) . '</td>';
             for ($col = 1; $col <= $highestColumnIndex; $col++) {
                 $cell = $sheet->getCell(Coordinate::stringFromColumnIndex($col) . $row);
                 echo '<td>' . esc_html($cell->getFormattedValue()) . '</td>';
@@ -80,12 +99,12 @@ add_action('wp_ajax_esv_preview_spreadsheet', function () {
     } elseif ($mode === 'table') {
         echo '<h3>Table Preview (Formatted)</h3>';
 
-        echo esv_render_spreadsheet_table($table_id, [
+        echo wp_kses_post(esv_render_spreadsheet_table($table_id, [
             'max_rows' => 10,
             'pagination' => false,
             'context_menu' => false,
             'sticky_header' => false,
-        ]);
+        ]));
     } else {
         wp_send_json_error('Invalid preview mode.');
     }
@@ -97,9 +116,23 @@ add_action('wp_ajax_esv_preview_spreadsheet', function () {
 add_action('wp_ajax_esv_retry_flatten', function () {
     check_ajax_referer('esv_ajax_preview', 'nonce');
 
-    $url = sanitize_text_field($_POST['url'] ?? '');
-    $worksheet = sanitize_text_field($_POST['worksheet'] ?? 'Sheet1');
-    $post_id = intval($_POST['post_id'] ?? 0);
+    // Properly validate, unslash, and sanitize url
+    $url = '';
+    if (isset($_POST['url'])) {
+        $url = sanitize_text_field(wp_unslash($_POST['url']));
+    }
+    
+    // Properly validate, unslash, and sanitize worksheet
+    $worksheet = 'Sheet1';
+    if (isset($_POST['worksheet'])) {
+        $worksheet = sanitize_text_field(wp_unslash($_POST['worksheet']));
+    }
+    
+    // Properly validate post_id
+    $post_id = 0;
+    if (isset($_POST['post_id'])) {
+        $post_id = intval($_POST['post_id']);
+    }
 
     if (!$url || !$worksheet || !$post_id) {
         wp_send_json_error(['message' => 'Missing required data.']);
@@ -121,9 +154,23 @@ add_action('wp_ajax_nopriv_esv_retry_flatten', 'esv_retry_flatten_callback');
 function esv_retry_flatten_callback() {
     check_ajax_referer('esv_ajax_preview', 'nonce');
 
-    $url      = esc_url_raw($_POST['url'] ?? '');
-    $sheet    = sanitize_text_field($_POST['sheet'] ?? 'Sheet1');
-    $post_id  = intval($_POST['post_id']);
+    // Properly validate, unslash, and sanitize url
+    $url = '';
+    if (isset($_POST['url'])) {
+        $url = esc_url_raw(wp_unslash($_POST['url']));
+    }
+    
+    // Properly validate, unslash, and sanitize sheet
+    $sheet = 'Sheet1';
+    if (isset($_POST['sheet'])) {
+        $sheet = sanitize_text_field(wp_unslash($_POST['sheet']));
+    }
+    
+    // Properly validate post_id
+    $post_id = 0;
+    if (isset($_POST['post_id'])) {
+        $post_id = intval($_POST['post_id']);
+    }
 
     if (!$url || !$post_id) {
         wp_send_json_error(['message' => 'Missing URL or post ID.']);

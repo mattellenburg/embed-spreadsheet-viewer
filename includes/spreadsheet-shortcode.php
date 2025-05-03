@@ -24,7 +24,6 @@ add_shortcode('spreadsheet', function ($atts) {
     ]);
 
     $shortcode_end_time = microtime(true);
-    error_log("⏱️ Total shortcode execution time: " . round($shortcode_end_time - $shortcode_start_time, 2) . "s");
 
     return($output);
 });

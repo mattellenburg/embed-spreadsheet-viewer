@@ -5,6 +5,13 @@
  * Extracts calculated values from an Excel XLSX file and creates a new XLSX
  * with only the values (no formulas). This mimics "Paste Special > Values" in Excel.
  */
+
+if ( ! function_exists('WP_Filesystem') ) {
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+}
+WP_Filesystem();
+global $wp_filesystem;
+
 function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = null) {
     if (empty($excel_url) || empty($sheet_name)) {
         return new WP_Error('invalid_input', 'Excel URL and sheet name are required.');
@@ -20,7 +27,7 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
 
     try {
         $timestamp = time();
-        $original_base = pathinfo(parse_url($excel_url, PHP_URL_PATH), PATHINFO_FILENAME);
+        $original_base = pathinfo(wp_parse_url($excel_url, PHP_URL_PATH), PATHINFO_FILENAME);
         $original_file = $upload_dir . "{$original_base}.xlsx";
         $values_file   = $upload_dir . "{$original_base}_values_only.xlsx";
 
@@ -28,8 +35,8 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
             $old_original = get_post_meta($post_id, 'esv_original_path', true);
             $old_flattened = get_post_meta($post_id, 'esv_flattened_path', true);
         
-            if ($old_original && file_exists($old_original)) unlink($old_original);
-            if ($old_flattened && file_exists($old_flattened)) unlink($old_flattened);
+            if ($old_original && file_exists($old_original)) wp_delete_file($old_original);
+            if ($old_flattened && file_exists($old_flattened)) wp_delete_file($old_flattened);
         }
         
         $download_result = download_excel_file($excel_url, $original_file);
@@ -94,8 +101,10 @@ class Excel_Values_Extractor {
     }
 
     public function extract() {
+        global $wp_filesystem;
+
         try {
-            if (!file_exists($this->tempDir)) mkdir($this->tempDir, 0777, true);
+            if (!file_exists($this->tempDir)) $wp_filesystem->mkdir($this->tempDir, 0777, true);
             $this->extractZip();
             $sheetId = $this->getSheetId();
             if (!$sheetId) throw new Exception("Sheet '$this->sheetName' not found");
@@ -103,7 +112,6 @@ class Excel_Values_Extractor {
             $this->createNewXlsx();
             return true;
         } catch (Exception $e) {
-            error_log("Extractor error: " . $e->getMessage());
             return false;
         } finally {
             $this->cleanupTempFiles();
@@ -142,7 +150,7 @@ class Excel_Values_Extractor {
             }
         }
     
-        if (!$sheetPath) throw new Exception("Sheet file for ID $sheetId not found");
+        if (!$sheetPath) throw new Exception("Sheet file for ID " . esc_html($sheetId) . " not found");
     
         $sheetXmlPath = $this->tempDir . '/' . $sheetPath;
         $sheetXml = file_get_contents($sheetXmlPath);
@@ -198,27 +206,22 @@ class Excel_Values_Extractor {
     }
 
     private function deleteDir($dir) {
+        global $wp_filesystem;
+
         if (!file_exists($dir)) return;
         foreach (array_diff(scandir($dir), ['.', '..']) as $file) {
             $path = $dir . '/' . $file;
-            is_dir($path) ? $this->deleteDir($path) : unlink($path);
+            is_dir($path) ? $this->deleteDir($path) : wp_delete_file($path);
         }
-        rmdir($dir);
+        $wp_filesystem->rmdir($dir);
     }
 }
 
 // Auto-hooked after spreadsheet is saved
 add_action('esv_after_spreadsheet_save', function ($url, $sheet, $post_id) {
     if (empty($url) || empty($sheet)) return;
-    error_log("📦 Flatten triggered for: $url (sheet: $sheet)");
 
     $result = extract_excel_values($url, $sheet, 'flattened_', $post_id);
-
-    if (is_wp_error($result)) {
-        error_log('❌ Flatten error: ' . $result->get_error_message());
-    } else {
-        error_log('✅ Flattened file created: ' . $result['values_file']);
-    }
 }, 10, 3);
 
 add_action('before_delete_post', function ($post_id) {
@@ -226,6 +229,6 @@ add_action('before_delete_post', function ($post_id) {
 
     $flattened_path = get_post_meta($post_id, 'esv_flattened_path', true);
     if ($flattened_path && file_exists($flattened_path)) {
-        unlink($flattened_path);
+        wp_delete_file($flattened_path);
     }
 }, 10, 1);

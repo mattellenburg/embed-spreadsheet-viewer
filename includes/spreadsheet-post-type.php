@@ -30,7 +30,7 @@ function esv_spreadsheet_custom_columns($columns) {
     $columns['esv_table_id'] = __('Table ID', 'embed-spreadsheet-viewer');
     $columns['esv_url'] = __('Spreadsheet URL', 'embed-spreadsheet-viewer');
     $columns['esv_flattened'] = __('Last Update Date', 'embed-spreadsheet-viewer');
-    $columns['date'] = __('Date');
+    $columns['date'] = __('Date', 'embed-spreadsheet-viewer');
     return $columns;
 }
 add_filter('manage_esv_spreadsheet_posts_columns', 'esv_spreadsheet_custom_columns');
@@ -43,12 +43,14 @@ function esv_spreadsheet_custom_column_data($column, $post_id) {
             break;
         case 'esv_url':
             $url = esc_url(get_post_meta($post_id, 'esv_url', true));
-            echo "<a href=\"$url\" target=\"_blank\">" . (strlen($url) > 40 ? substr($url, 0, 40) . '...' : $url) . "</a>";
+            echo "<a href=\"" . esc_url($url) . "\" target=\"_blank\">" . 
+            esc_html(strlen($url) > 40 ? substr($url, 0, 40) . '...' : $url) . 
+            "</a>";            
             break;
         case 'esv_flattened':
             $path = get_post_meta($post_id, 'esv_flattened_path', true);
             if ($path && file_exists($path)) {
-                echo esc_html(date('Y-m-d H:i:s', filemtime($path)));
+                echo esc_html(gmdate('Y-m-d H:i:s', filemtime($path)));
             } else {
                 echo '<em>None</em>';
             }

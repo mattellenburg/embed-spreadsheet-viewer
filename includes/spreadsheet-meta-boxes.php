@@ -18,91 +18,104 @@ function esv_add_spreadsheet_meta_box() {
 function esv_render_spreadsheet_meta_box($post) {
     $meta = get_post_meta($post->ID);
     $get = function ($key, $default = '') use ($meta) {
-        return isset($meta[$key]) ? esc_attr($meta[$key][0]) : $default;
+        return isset($meta[$key]) ? $meta[$key][0] : $default;
     };
 
     wp_nonce_field('esv_save_spreadsheet_meta', 'esv_spreadsheet_nonce');
-
     ?>
+
     <div id="esv-basic-fields">
         <table class="form-table">
             <tr>
                 <th><label for="esv_table_id">Table ID</label></th>
                 <td>
-                    <input type="text" id="esv_table_id" name="esv_table_id" value="<?= $get('esv_table_id') ?>" class="regular-text" required>
-                    <br><em>This is the id that will be in the shortcode, e.g. [spreadsheet id="sample-data"].</em>
+                    <input type="text" id="esv_table_id" name="esv_table_id" value="<?php echo esc_attr($get('esv_table_id')); ?>" class="regular-text" required>
+                    <br><em>This is the ID used in the shortcode, e.g., [spreadsheet id="sample-data"].</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_url">Spreadsheet URL</label></th>
                 <td>
-                    <input type="url" id="esv_url" name="esv_url" value="<?= $get('esv_url') ?>" class="regular-text" required>
-                    <br><em>This URL must be publicly viewable and downloadable, e.g. DropBox URL must end with "=1" instead of "=0".</em>
+                    <input type="url" id="esv_url" name="esv_url" value="<?php echo esc_url($get('esv_url')); ?>" class="regular-text" required>
+                    <br><em>This URL must be publicly viewable and downloadable, e.g., Dropbox URLs should end with "=1".</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_worksheet">Worksheet Name</label></th>
                 <td>
-                    <input type="text" id="esv_worksheet" name="esv_worksheet" value="<?= $get('esv_worksheet', 'Sheet1') ?>" class="regular-text">
+                    <input type="text" id="esv_worksheet" name="esv_worksheet" value="<?php echo esc_attr($get('esv_worksheet', 'Sheet1')); ?>" class="regular-text">
                     <br><em>Name of the worksheet that contains the data.</em>
                 </td>
             </tr>
         </table>
     </div>
 
-    <div id="esv-advanced-fields" style="<?= $post->post_status === 'auto-draft' ? 'display:none;' : '' ?>">
+    <div id="esv-advanced-fields" style="<?php echo ($post->post_status === 'auto-draft') ? 'display:none;' : ''; ?>">
         <hr>
         <h3>Advanced Settings</h3>
         <table class="form-table">
             <tr>
                 <th><label for="esv_header_row">Header Row</label></th>
                 <td>
-                    <input type="number" id="esv_header_row" name="esv_header_row" value="<?= $get('esv_header_row', 1) ?>" min="1" class="small-text"> <em>Row number that contains the column headings</em></td>
+                    <input type="number" id="esv_header_row" name="esv_header_row" value="<?php echo esc_attr($get('esv_header_row', 1)); ?>" min="1" class="small-text"> <em>Row number that contains the column headings</em>
+                </td>
             </tr>
             <tr>
                 <th><label for="esv_start_row">Start Row</label></th>
                 <td>
-                    <input type="number" id="esv_start_row" name="esv_start_row" value="<?= $get('esv_start_row', 2) ?>" min="1" class="small-text"> <em>First data row</em></td>
+                    <input type="number" id="esv_start_row" name="esv_start_row" value="<?php echo esc_attr($get('esv_start_row', 2)); ?>" min="1" class="small-text"> <em>First data row</em>
+                </td>
             </tr>
             <tr>
                 <th><label for="esv_end_row">End Row</label></th>
-                <td><input type="number" id="esv_end_row" name="esv_end_row" value="<?= $get('esv_end_row') ?>" min="1" class="small-text"> <em>Leave blank to autodetect</em></td>
+                <td>
+                    <input type="number" id="esv_end_row" name="esv_end_row" value="<?php echo esc_attr($get('esv_end_row')); ?>" min="1" class="small-text"> <em>Leave blank to autodetect</em>
+                </td>
             </tr>
             <tr>
                 <th><label for="esv_start_col">Start Column</label></th>
-                <td><input type="number" id="esv_start_col" name="esv_start_col" value="<?= $get('esv_start_col', 1) ?>" min="1" class="small-text"> <em>First data column</em></td>
+                <td>
+                    <input type="number" id="esv_start_col" name="esv_start_col" value="<?php echo esc_attr($get('esv_start_col', 1)); ?>" min="1" class="small-text"> <em>First data column</em>
+                </td>
             </tr>
             <tr>
                 <th><label for="esv_end_col">End Column</label></th>
-                <td><input type="number" id="esv_end_col" name="esv_end_col" value="<?= $get('esv_end_col') ?>" min="1" class="small-text"> <em>Leave blank to autodetect</em></td>
+                <td>
+                    <input type="number" id="esv_end_col" name="esv_end_col" value="<?php echo esc_attr($get('esv_end_col')); ?>" min="1" class="small-text"> <em>Leave blank to autodetect</em>
+                </td>
             </tr>
             <tr>
                 <th><label for="esv_excluded_rows">Exclude Rows</label></th>
-                <td><input type="text" id="esv_excluded_rows" name="esv_excluded_rows" value="<?= $get('esv_excluded_rows') ?>" placeholder="e.g. 1,2,5-9" class="regular-text">
+                <td>
+                    <input type="text" id="esv_excluded_rows" name="esv_excluded_rows" value="<?php echo esc_attr($get('esv_excluded_rows')); ?>" placeholder="e.g. 1,2,5-9" class="regular-text">
                     <br><em>Enter specific rows or ranges separated by commas</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_excluded_cols">Exclude Columns</label></th>
-                <td><input type="text" id="esv_excluded_cols" name="esv_excluded_cols" value="<?= $get('esv_excluded_cols') ?>" placeholder="e.g. 1,2,5-8,M:O" class="regular-text">
+                <td>
+                    <input type="text" id="esv_excluded_cols" name="esv_excluded_cols" value="<?php echo esc_attr($get('esv_excluded_cols')); ?>" placeholder="e.g. 1,2,5-8,M:O" class="regular-text">
                     <br><em>Enter specific column numbers/letters or ranges separated by commas</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_column_formats">Column Formats (non-text)</label></th>
-                <td><input type="text" id="esv_column_formats" name="esv_column_formats" value="<?= $get('esv_column_formats') ?>" placeholder="e.g. 1=3,B=2,6=1" class="regular-text">
+                <td>
+                    <input type="text" id="esv_column_formats" name="esv_column_formats" value="<?php echo esc_attr($get('esv_column_formats')); ?>" placeholder="e.g. 1=3,B=2,6=1" class="regular-text">
                     <br><em>Format Codes: 1 = Number, 2 = Date, 3 = Currency</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_column_widths">Column Maximum Widths</label></th>
-                <td><input type="text" id="esv_column_widths" name="esv_column_widths" value="<?= $get('esv_column_widths') ?>" placeholder="e.g. 1=100,2=500" class="regular-text">
+                <td>
+                    <input type="text" id="esv_column_widths" name="esv_column_widths" value="<?php echo esc_attr($get('esv_column_widths')); ?>" placeholder="e.g. 1=100,2=500" class="regular-text">
                     <br><em>Defaults to 500px max if not provided</em>
                 </td>
             </tr>
             <tr>
                 <th><label for="esv_column_headers">Column Headers</label></th>
-                <td><input type="text" id="esv_column_headers" name="esv_column_headers" value="<?= $get('esv_column_headers') ?>" placeholder="e.g. 1=ID,B=Date" class="regular-text">
+                <td>
+                    <input type="text" id="esv_column_headers" name="esv_column_headers" value="<?php echo esc_attr($get('esv_column_headers')); ?>" placeholder="e.g. 1=ID,B=Date" class="regular-text">
                     <br><em>Overrides values from defined header row</em>
                 </td>
             </tr>
@@ -118,9 +131,9 @@ function esv_render_spreadsheet_meta_box($post) {
                     }
                     ?>
                     <button type="button" class="button esv-retry-flatten" 
-                        data-url="<?= esc_attr($get('esv_url')) ?>" 
-                        data-sheet="<?= esc_attr($get('esv_worksheet', 'Sheet1')) ?>" 
-                        data-post="<?= $post->ID ?>" 
+                        data-url="<?php echo esc_attr($get('esv_url')); ?>" 
+                        data-sheet="<?php echo esc_attr($get('esv_worksheet', 'Sheet1')); ?>" 
+                        data-post="<?php echo esc_attr($post->ID); ?>" 
                         data-status-selector="#esv-flatten-status">
                         Recreate Spreadsheet
                     </button>
@@ -130,23 +143,22 @@ function esv_render_spreadsheet_meta_box($post) {
             <tr>
                 <th><label>Show Download Link</label></th>
                 <td>
-                    <input type="checkbox" id="esv_show_download_link" name="esv_show_download_link" value="1" <?= $get('esv_show_download_link') ? 'checked' : '' ?>>
-                    <em>Checking this box will give users the ability to download the worksheet in its entireity.</em>
+                    <input type="checkbox" id="esv_show_download_link" name="esv_show_download_link" value="1" <?php checked($get('esv_show_download_link'), '1'); ?>>
+                    <em>Checking this box will let users download the worksheet.</em>
                 </td>
             </tr>
             <tr>
                 <th><label>Show Refresh Button</label></th>
                 <td>
-                    <input type="checkbox" id="esv_show_refresh_button" name="esv_show_refresh_button" value="1" <?= $get('esv_show_refresh_button') ? 'checked' : '' ?>>
-                    <em>Allowing end users to refresh spreadsheets may consume signficant resources.</em>
+                    <input type="checkbox" id="esv_show_refresh_button" name="esv_show_refresh_button" value="1" <?php checked($get('esv_show_refresh_button'), '1'); ?>>
+                    <em>Allowing end users to refresh spreadsheets may consume significant resources.</em>
                 </td>
             </tr>
             <tr>
                 <th></th>
                 <td>
-                    <?php $table_id = esc_attr($get('esv_table_id')); ?>
-                    <button type="button" class="button esv-preview-button" data-mode="worksheet" data-table_id="<?= $table_id ?>" data-worksheet="<?= esc_attr($get('esv_worksheet', 'Sheet1')) ?>">Show Worksheet Preview</button>
-                    <button type="button" class="button esv-preview-button" data-mode="table" data-table_id="<?= $table_id ?>" data-worksheet="<?= esc_attr($get('esv_worksheet', 'Sheet1')) ?>">Show Table Preview</button>
+                    <button type="button" class="button esv-preview-button" data-mode="worksheet" data-table_id="<?php echo esc_attr($get('esv_table_id')); ?>" data-worksheet="<?php echo esc_attr($get('esv_worksheet', 'Sheet1')); ?>">Show Worksheet Preview</button>
+                    <button type="button" class="button esv-preview-button" data-mode="table" data-table_id="<?php echo esc_attr($get('esv_table_id')); ?>" data-worksheet="<?php echo esc_attr($get('esv_worksheet', 'Sheet1')); ?>">Show Table Preview</button>
                     <br><em>You must publish the spreadsheet before you can see the preview.</em>
                 </td>
             </tr>
@@ -167,7 +179,13 @@ function esv_render_spreadsheet_meta_box($post) {
 
 // Save metabox data
 function esv_save_spreadsheet_meta($post_id) {
-    if (!isset($_POST['esv_spreadsheet_nonce']) || !wp_verify_nonce($_POST['esv_spreadsheet_nonce'], 'esv_save_spreadsheet_meta')) return;
+    if (
+        ! isset($_POST['esv_spreadsheet_nonce']) ||
+        ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['esv_spreadsheet_nonce'])), 'esv_save_spreadsheet_meta')
+    ) {
+        return;
+    }
+
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_post', $post_id)) return;
 
@@ -191,17 +209,16 @@ function esv_save_spreadsheet_meta($post_id) {
 
     foreach ($fields as $field) {
         if (isset($_POST[$field])) {
-            update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
+            update_post_meta($post_id, $field, sanitize_text_field(wp_unslash($_POST[$field])));
         } else {
             delete_post_meta($post_id, $field);
         }
     }
 
-    // ✅ After saving, trigger flatten process
-    $url = $_POST['esv_url'] ?? '';
-    $sheet = $_POST['esv_worksheet'] ?? 'Sheet1';
+    $url = isset($_POST['esv_url']) ? esc_url_raw(sanitize_text_field(wp_unslash($_POST['esv_url']))) : '';
+    $sheet = isset($_POST['esv_worksheet']) ? sanitize_text_field(wp_unslash($_POST['esv_worksheet'])) : 'Sheet1';
 
-    if ($url) {
+    if (!empty($url)) {
         do_action('esv_after_spreadsheet_save', $url, $sheet, $post_id);
     }
 }

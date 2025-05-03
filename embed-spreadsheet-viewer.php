@@ -11,6 +11,9 @@
 
 defined('ABSPATH') or die('No script kiddies please!');
 
+// Define plugin version
+define('ESV_VERSION', '1.0.0');
+
 // Includes
 require_once plugin_dir_path(__FILE__) . 'includes/admin-menu.php';
 require_once plugin_dir_path(__FILE__) . 'includes/ajax-preview.php';
@@ -23,7 +26,7 @@ require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 
 // Shared script (used by both admin + frontend)
 function esv_enqueue_shared_scripts() {
-    wp_enqueue_script('esv-shared-scripts', plugins_url('assets/shared/js/esv-shared.js', __FILE__), ['jquery'], null, true);
+    wp_enqueue_script('esv-shared-scripts', plugins_url('assets/shared/js/esv-shared.js', __FILE__), ['jquery'], ESV_VERSION, true);
 
     wp_localize_script('esv-shared-scripts', 'esv_shared', [
         'ajaxurl' => admin_url('admin-ajax.php'),
@@ -38,10 +41,10 @@ add_action('admin_enqueue_scripts', function () {
     $screen = get_current_screen();
     if ($screen && $screen->post_type === 'esv_spreadsheet') {
         // Main admin scripts
-        wp_enqueue_script('esv-admin-scripts', plugins_url('assets/admin/js/admin-scripts.js', __FILE__), ['jquery'], null, true);
+        wp_enqueue_script('esv-admin-scripts', plugins_url('assets/admin/js/admin-scripts.js', __FILE__), ['jquery'], ESV_VERSION, true);
 
         // Excel values extractor script
-        wp_enqueue_script('esv-values-extractor', plugins_url('assets/admin/js/spreadsheet-values-extractor.js', __FILE__), ['jquery'], null, true);
+        wp_enqueue_script('esv-values-extractor', plugins_url('assets/admin/js/spreadsheet-values-extractor.js', __FILE__), ['jquery'], ESV_VERSION, true);
 
         wp_localize_script('esv-admin-scripts', 'esv_admin', [
             'ajaxurl' => admin_url('admin-ajax.php'),
@@ -57,8 +60,8 @@ add_action('admin_enqueue_scripts', function () {
 
 // Frontend assets
 add_action('wp_enqueue_scripts', function () {
-    wp_enqueue_style('esv-view-styles', plugins_url('assets/frontend/css/frontend-styles.css', __FILE__));
-    wp_enqueue_script('esv-view-scripts', plugins_url('assets/frontend/js/frontend-scripts.js', __FILE__), ['jquery'], null, true);
+    wp_enqueue_style('esv-view-styles', plugins_url('assets/frontend/css/frontend-styles.css', __FILE__), array(), ESV_VERSION);
+    wp_enqueue_script('esv-view-scripts', plugins_url('assets/frontend/js/frontend-scripts.js', __FILE__), ['jquery'], ESV_VERSION, true);
 });
 
 add_action('admin_notices', function () {

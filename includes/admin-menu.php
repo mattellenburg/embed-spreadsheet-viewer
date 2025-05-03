@@ -13,8 +13,8 @@ add_action('admin_enqueue_scripts', function ($hook) {
     if ($screen && $screen->post_type === 'esv_spreadsheet') {
         $base_url = plugin_dir_url(__DIR__);
 
-        wp_enqueue_style('esv-admin-styles', $base_url . 'assets/admin/css/admin-styles.css');
-        wp_enqueue_script('esv-admin-scripts', $base_url . 'assets/admin/js/admin-scripts.js', ['jquery'], null, true);
+        wp_enqueue_style('esv-admin-styles', $base_url . 'assets/admin/css/admin-styles.css', array(), ESV_VERSION);
+        wp_enqueue_script('esv-admin-scripts', $base_url . 'assets/admin/js/admin-scripts.js', ['jquery'], ESV_VERSION, true);
 
         wp_localize_script('esv-admin-scripts', 'esv_admin', [
             'nonce' => wp_create_nonce('esv_ajax_preview'),
@@ -27,7 +27,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
  */
 function process_excel_values_ajax() {
     // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'my_plugin_nonce')) {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce']), 'my_plugin_nonce'))) {
         wp_send_json_error(array('message' => 'Security check failed.'));
     }
     
@@ -40,11 +40,19 @@ function process_excel_values_ajax() {
     if (empty($_POST['excel_url']) || empty($_POST['sheet_name'])) {
         wp_send_json_error(array('message' => 'Excel URL and sheet name are required.'));
     }
-    
-    $excel_url = esc_url_raw($_POST['excel_url']);
-    $sheet_name = sanitize_text_field($_POST['sheet_name']);
-    $prefix = isset($_POST['prefix']) ? sanitize_text_field($_POST['prefix']) : '';
-    
+
+    // Properly unslash and sanitize excel_url
+    $excel_url = esc_url(sanitize_text_field(wp_unslash($_POST['excel_url'])));
+
+    // Properly unslash and sanitize sheet_name
+    $sheet_name = sanitize_text_field(wp_unslash($_POST['sheet_name']));
+
+    // Properly unslash and sanitize prefix if it exists
+    $prefix = '';
+    if (isset($_POST['prefix'])) {
+        $prefix = sanitize_text_field(wp_unslash($_POST['prefix']));
+    }
+
     // Process the Excel file
     $result = extract_excel_values($excel_url, $sheet_name, $prefix);
     
