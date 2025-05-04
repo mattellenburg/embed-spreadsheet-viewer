@@ -23,7 +23,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
             ]
         ]
     ]);
-    
+
     if (empty($posts)) {
         return "<p><strong>Error:</strong> Spreadsheet with ID <strong>" . esc_html($table_id) . "</strong> not found.</p>";
     }
@@ -49,14 +49,14 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     $excluded_cols = esv_parse_column_ranges($meta['esv_excluded_cols'][0] ?? '');
     $format_map = esv_parse_key_value_pairs($meta['esv_column_formats'][0] ?? '');
     $width_map = esv_parse_key_value_pairs($meta['esv_column_widths'][0] ?? '', 500);
-    $custom_headers  = esv_parse_key_string_pairs($meta['esv_column_headers'][0] ?? '', '');
+    $custom_headers  = esv_parse_key_string_pairs($meta['esv_column_headers'][0] ?? '');
 
     if (!$url) {
         return "<p><strong>Error:</strong> Spreadsheet URL is missing.</p>";
     }
 
+    $original_path = get_post_meta($post->ID, 'esv_original_path', true);
     $flattened_path = get_post_meta($post->ID, 'esv_flattened_path', true);
-    $original_path = str_replace('_values_only', '', $flattened_path);
 
     if (empty($flattened_path) || !file_exists($flattened_path)) {
         return "<p><strong>Error:</strong> No flattened spreadsheet found. Please try saving again in the admin to generate a processed version.</p>";
@@ -64,7 +64,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
 
     try {
         $reader = IOFactory::createReaderForFile($flattened_path);
-        $reader->setReadDataOnly(false);  // IMPORTANT: allow formulas
+        $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($flattened_path);
     } catch (Exception $e) {
         return "<p><strong>Error:</strong> Failed to read spreadsheet: " . esc_html($e->getMessage()) . "</p>";
@@ -78,7 +78,6 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     $highestRow = $end_row ?: $sheet->getHighestRow();
     $highestColumnIndex = $end_col ?: Coordinate::columnIndexFromString($sheet->getHighestColumn());
 
-    // Build hyperlink map from original file (if available)
     $hyperlink_map = [];
     if (!empty($original_path) && file_exists($original_path)) {
         try {
@@ -91,22 +90,19 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
                 foreach ($rowObj->getCellIterator() as $cell) {
                     $colLetter = $cell->getColumn();
                     if ($cell->hasHyperlink()) {
-                        // Get hyperlink from object
                         $hyperlink_map[$rowIndex][$colLetter] = $cell->getHyperlink()->getUrl();
-                    }
-                    else {
+                    } else {
                         if ($cell->getDataType() === \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA) {
                             $formula = $cell->getValue();
                             if (preg_match('/HYPERLINK\(["\'](.*?)["\']/', $formula, $matches)) {
-                                // Get hyperlink from formula
                                 $hyperlink_map[$rowIndex][$colLetter] = $matches[1];
                             }
-                        }            
+                        }
                     }
                 }
             }
         } catch (Exception $e) {
-            return "<p><strong>Error:</strong>Failed to load original file for hyperlinks: " . $e->getMessage() . "</p>";
+            return "<p><strong>Error:</strong> Failed to load original file for hyperlinks: " . $e->getMessage() . "</p>";
         }
     }
 
@@ -143,11 +139,15 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     echo '<thead><tr>';
 
     for ($col = $start_col; $col <= $highestColumnIndex; $col++) {
-        if (in_array($col, $excluded_cols)) continue;
+        $colLetter = Coordinate::stringFromColumnIndex($col);
 
-        $header = $custom_headers[$col] ?? $sheet->getCell(Coordinate::stringFromColumnIndex($col) . $header_row)->getFormattedValue();
+        if (in_array($col, $excluded_cols, true) || in_array($colLetter, $excluded_cols, true)) continue;
+
+        $header = $custom_headers[$col] ?? $custom_headers[$colLetter] ?? $sheet->getCell($colLetter . $header_row)->getFormattedValue();
+
         echo '<th>' . esc_html($header) . '</th>';
     }
+
     echo '</tr></thead><tbody>';
 
     $rows_rendered = 0;
@@ -161,14 +161,13 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
             $col = Coordinate::columnIndexFromString($colLetter);
 
             if ($col < $start_col || $col > $highestColumnIndex) continue;
-            if (in_array($col, $excluded_cols)) continue;
+            if (in_array($col, $excluded_cols, true) || in_array($colLetter, $excluded_cols, true)) continue;
 
             $raw_value = $cell->getValue();
-            $format_type = $format_map[$col] ?? 0;
+            $format_type = $format_map[$col] ?? $format_map[$colLetter] ?? 0;
             $display = esv_format_cell((string)$raw_value, $format_type);
-            $max_width = intval($width_map[$col] ?? 500);
+            $max_width = intval($width_map[$col] ?? $width_map[$colLetter] ?? 500);
 
-            // Check hyperlink: prioritize original file’s hyperlink object
             $hyperlink = $hyperlink_map[$row][$colLetter] ?? null;
 
             echo '<td style="max-width:' . esc_attr($max_width) . 'px;"><div class="cell-text" title="' . esc_attr($display) . '">';
@@ -188,13 +187,13 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
 
     echo '</tbody></table>';
 
-    if ($args['pagination']) {
+    if ($args['pagination'] && $args['sticky_header']) {
         echo '<div class="esv-pagination-controls"></div>';
     }
 
     echo '</div>';
 
-    if ($args['add_context_menu']) {
+    if ($args['add_context_menu'] && $args['sticky_header']) {
         echo '<div id="esv-context-menu" style="display:none;">
                 <ul>
                     <li data-action="sort-asc">Sort Ascending</li>
@@ -208,6 +207,86 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     }
 
     return ob_get_clean();
+}
+
+// Updated helpers to handle both numbers and letters
+function esv_parse_ranges($input) {
+    $result = [];
+    $input = preg_replace('/\s+/', '', $input);
+    $parts = explode(',', $input);
+    foreach ($parts as $part) {
+        if (preg_match('/^(\d+)-(\d+)$/', $part, $matches)) {
+            $result = array_merge($result, range($matches[1], $matches[2]));
+        } elseif (is_numeric($part)) {
+            $result[] = intval($part);
+        }
+    }
+    return array_unique($result);
+}
+
+function esv_parse_column_ranges($input) {
+    $cols = [];
+    $parts = explode(',', preg_replace('/\s+/', '', $input));
+    foreach ($parts as $part) {
+        if (ctype_alpha($part)) {
+            $index = Coordinate::columnIndexFromString(strtoupper($part));
+            $cols[] = $index;
+            $cols[] = strtoupper($part);
+        } elseif (is_numeric($part)) {
+            $cols[] = intval($part);
+            $cols[] = Coordinate::stringFromColumnIndex(intval($part));
+        }
+    }
+    preg_match_all('/([A-Z]+):([A-Z]+)/i', $input, $matches, PREG_SET_ORDER);
+    foreach ($matches as $match) {
+        $start = Coordinate::columnIndexFromString($match[1]);
+        $end = Coordinate::columnIndexFromString($match[2]);
+        for ($i = $start; $i <= $end; $i++) {
+            $cols[] = $i;
+            $cols[] = Coordinate::stringFromColumnIndex($i);
+        }
+    }
+    return array_unique($cols);
+}
+
+function esv_parse_key_value_pairs($input, $default = 0) {
+    $map = [];
+    foreach (explode(',', $input) as $pair) {
+        if (preg_match('/^([A-Z]+|\d+)=([\d.]+)$/i', trim($pair), $m)) {
+            $colKey = $m[1];
+            $value = $m[2];
+
+            $index = ctype_alpha($colKey)
+                ? Coordinate::columnIndexFromString(strtoupper($colKey))
+                : intval($colKey);
+
+            $letter = Coordinate::stringFromColumnIndex($index);
+
+            $map[$index] = $value;
+            $map[$letter] = $value;
+        }
+    }
+    return $map;
+}
+
+function esv_parse_key_string_pairs($input) {
+    $map = [];
+    foreach (explode(',', $input) as $pair) {
+        if (preg_match('/([A-Z]+|\d+)=(.+)/', $pair, $m)) {
+            $colKey = trim($m[1]);
+            $label = trim($m[2]);
+
+            $index = ctype_alpha($colKey)
+                ? Coordinate::columnIndexFromString(strtoupper($colKey))
+                : intval($colKey);
+
+            $letter = Coordinate::stringFromColumnIndex($index);
+
+            $map[$index] = $label;
+            $map[$letter] = $label;
+        }
+    }
+    return $map;
 }
 
 // Helper functions (unchanged)
@@ -226,52 +305,4 @@ function esv_format_cell($value, $type) {
         case 3: return '$' . number_format((float)$value, 2);
         default: return $value;
     }
-}
-
-function esv_parse_ranges($input) {
-    $result = [];
-    $input = preg_replace('/\s+/', '', $input);
-    $parts = explode(',', $input);
-    foreach ($parts as $part) {
-        if (preg_match('/^(\d+)-(\d+)$/', $part, $matches)) {
-            $result = array_merge($result, range($matches[1], $matches[2]));
-        } elseif (is_numeric($part)) {
-            $result[] = intval($part);
-        }
-    }
-    return array_unique($result);
-}
-
-function esv_parse_key_value_pairs($input, $default = 0) {
-    $map = [];
-    foreach (explode(',', $input) as $pair) {
-        if (preg_match('/^([A-Z]+|\d+)=([\d.]+)$/i', trim($pair), $m)) {
-            $colKey = is_numeric($m[1]) 
-                ? intval($m[1]) 
-                : \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(strtoupper($m[1]));
-            $map[$colKey] = $m[2];
-        }
-    }
-    return $map;
-}
-
-function esv_parse_column_ranges($input) {
-    $cols = esv_parse_ranges($input);
-    preg_match_all('/([A-Z]+):([A-Z]+)/i', $input, $matches, PREG_SET_ORDER);
-    foreach ($matches as $match) {
-        $start = Coordinate::columnIndexFromString($match[1]);
-        $end = Coordinate::columnIndexFromString($match[2]);
-        $cols = array_merge($cols, range($start, $end));
-    }
-    return array_unique($cols);
-}
-
-function esv_parse_key_string_pairs($input) {
-    $map = [];
-    foreach (explode(',', $input) as $pair) {
-        if (preg_match('/(\d+)=(.+)/', $pair, $m)) {
-            $map[intval($m[1])] = trim($m[2]);
-        }
-    }
-    return $map;
 }

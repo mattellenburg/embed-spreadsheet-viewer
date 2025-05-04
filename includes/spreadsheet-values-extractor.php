@@ -18,7 +18,7 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
     }
 
     $wp_upload_dir = wp_upload_dir();
-    $upload_dir = trailingslashit($wp_upload_dir['basedir']) . 'excel-extractor/';
+    $upload_dir = trailingslashit($wp_upload_dir['basedir']) . 'embed-spreadsheet-viewer/';
 
     if (!file_exists($upload_dir)) {
         wp_mkdir_p($upload_dir);
@@ -29,12 +29,15 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
         $timestamp = time();
         $original_base = pathinfo(wp_parse_url($excel_url, PHP_URL_PATH), PATHINFO_FILENAME);
         $original_file = $upload_dir . "{$original_base}.xlsx";
-        $values_file   = $upload_dir . "{$original_base}_values_only.xlsx";
+        $values_file = null;
 
         if ($post_id) {
             $old_original = get_post_meta($post_id, 'esv_original_path', true);
             $old_flattened = get_post_meta($post_id, 'esv_flattened_path', true);
-        
+            $table_id = get_post_meta($post_id, 'esv_table_id', true);
+
+            $values_file   = $upload_dir . $original_base . "_" . $table_id . "_values_only.xlsx";
+            
             if ($old_original && file_exists($old_original)) wp_delete_file($old_original);
             if ($old_flattened && file_exists($old_flattened)) wp_delete_file($old_flattened);
         }
