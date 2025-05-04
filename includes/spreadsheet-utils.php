@@ -34,7 +34,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     $max_rows = intval($args['max_rows']);
 
     $spreadsheet_name = get_the_title($post);
-    $spreadsheet_name_safe = esc_html($spreadsheet_name); // Escape title
+    $spreadsheet_name_safe = esc_html($spreadsheet_name);
 
     $url = isset($meta['esv_url'][0]) ? esc_url($meta['esv_url'][0]) : '';
     $worksheet_name = isset($meta['esv_worksheet'][0]) ? sanitize_text_field($meta['esv_worksheet'][0]) : 'Sheet1';
@@ -56,6 +56,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     }
 
     $flattened_path = get_post_meta($post->ID, 'esv_flattened_path', true);
+    $original_path = str_replace('_values_only', '', $flattened_path);
 
     if (empty($flattened_path) || !file_exists($flattened_path)) {
         return "<p><strong>Error:</strong> No flattened spreadsheet found. Please try saving again in the admin to generate a processed version.</p>";
@@ -63,11 +64,10 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
 
     try {
         $reader = IOFactory::createReaderForFile($flattened_path);
-        $reader->setReadDataOnly(true);
-        $reader->setReadEmptyCells(false);
+        $reader->setReadDataOnly(false);  // IMPORTANT: allow formulas
         $spreadsheet = $reader->load($flattened_path);
     } catch (Exception $e) {
-        return "<p><strong>Error:</strong> Failed to read flattened spreadsheet: " . esc_html($e->getMessage()) . "</p>";
+        return "<p><strong>Error:</strong> Failed to read spreadsheet: " . esc_html($e->getMessage()) . "</p>";
     }
 
     $sheet = $spreadsheet->getSheetByName($worksheet_name);
@@ -77,6 +77,38 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
 
     $highestRow = $end_row ?: $sheet->getHighestRow();
     $highestColumnIndex = $end_col ?: Coordinate::columnIndexFromString($sheet->getHighestColumn());
+
+    // Build hyperlink map from original file (if available)
+    $hyperlink_map = [];
+    if (!empty($original_path) && file_exists($original_path)) {
+        try {
+            $originalReader = IOFactory::createReaderForFile($original_path);
+            $originalSpreadsheet = $originalReader->load($original_path);
+            $originalSheet = $originalSpreadsheet->getSheetByName($worksheet_name);
+
+            foreach ($originalSheet->getRowIterator($start_row, $highestRow) as $rowObj) {
+                $rowIndex = $rowObj->getRowIndex();
+                foreach ($rowObj->getCellIterator() as $cell) {
+                    $colLetter = $cell->getColumn();
+                    if ($cell->hasHyperlink()) {
+                        // Get hyperlink from object
+                        $hyperlink_map[$rowIndex][$colLetter] = $cell->getHyperlink()->getUrl();
+                    }
+                    else {
+                        if ($cell->getDataType() === \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA) {
+                            $formula = $cell->getValue();
+                            if (preg_match('/HYPERLINK\(["\'](.*?)["\']/', $formula, $matches)) {
+                                // Get hyperlink from formula
+                                $hyperlink_map[$rowIndex][$colLetter] = $matches[1];
+                            }
+                        }            
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            return "<p><strong>Error:</strong>Failed to load original file for hyperlinks: " . $e->getMessage() . "</p>";
+        }
+    }
 
     ob_start();
 
@@ -90,7 +122,7 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
         echo '<div class="esv-meta"></div>';
 
         echo '<div class="esv-table-container">';
-        echo '<p>Right click on a column to access sorting and filtering functionality. ' . ($max_rows !== 0 ? 'A maximum of ' . esc_html($highestRow) . ' rows are displayed. ' : '') . '</p>';
+        echo '<p>Right click on a column to access sorting and filtering functionality.</p>';
 
         $show_refresh = get_post_meta($post->ID, 'esv_show_refresh_button', true);
         if ($show_refresh) {
@@ -132,16 +164,19 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
             if (in_array($col, $excluded_cols)) continue;
 
             $raw_value = $cell->getValue();
-            $hyperlink = $cell->hasHyperlink() ? $cell->getHyperlink()->getUrl() : null;
             $format_type = $format_map[$col] ?? 0;
             $display = esv_format_cell((string)$raw_value, $format_type);
-
-            $escaped = esc_html($display);
             $max_width = intval($width_map[$col] ?? 500);
 
-            echo '<td style="max-width:' . esc_attr($max_width) . 'px;">';
-            echo '<div class="cell-text" title="' . esc_attr($escaped) . '">';
-            echo $hyperlink ? '<a href="' . esc_url($hyperlink) . '" target="_blank">' . esc_attr($escaped) . '</a>' : esc_attr($escaped);
+            // Check hyperlink: prioritize original file’s hyperlink object
+            $hyperlink = $hyperlink_map[$row][$colLetter] ?? null;
+
+            echo '<td style="max-width:' . esc_attr($max_width) . 'px;"><div class="cell-text" title="' . esc_attr($display) . '">';
+            if ($hyperlink) {
+                echo '<a href="' . esc_url($hyperlink) . '" target="_blank">' . esc_html($display) . '</a>';
+            } else {
+                echo esc_html($display);
+            }
             echo '</div></td>';
         }
         echo '</tr>';
@@ -175,10 +210,11 @@ function esv_render_spreadsheet_table($table_id, $args = []) {
     return ob_get_clean();
 }
 
+// Helper functions (unchanged)
 function esv_format_cell($value, $type) {
     switch (intval($type)) {
-        case 1: return number_format((float)$value, 2); // Number
-        case 2: // Date
+        case 1: return number_format((float)$value, 2);
+        case 2:
             if (is_numeric($value)) {
                 try {
                     return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
@@ -187,7 +223,7 @@ function esv_format_cell($value, $type) {
                 }
             }
             return gmdate('Y-m-d', strtotime($value));
-        case 3: return '$' . number_format((float)$value, 2); // Currency
+        case 3: return '$' . number_format((float)$value, 2);
         default: return $value;
     }
 }
@@ -208,17 +244,14 @@ function esv_parse_ranges($input) {
 
 function esv_parse_key_value_pairs($input, $default = 0) {
     $map = [];
-
     foreach (explode(',', $input) as $pair) {
         if (preg_match('/^([A-Z]+|\d+)=([\d.]+)$/i', trim($pair), $m)) {
             $colKey = is_numeric($m[1]) 
                 ? intval($m[1]) 
                 : \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(strtoupper($m[1]));
-
             $map[$colKey] = $m[2];
         }
     }
-
     return $map;
 }
 
@@ -241,15 +274,4 @@ function esv_parse_key_string_pairs($input) {
         }
     }
     return $map;
-}
-
-function esv_convert_dropbox_to_preview_url($url) {
-    // If it's a Dropbox link, force ?dl=0
-    if (strpos($url, 'dropbox.com') !== false) {
-        // Replace existing dl=1 or dl=0
-        $url = preg_replace('/[?&]dl=\d/', '', $url); // Remove existing dl
-        $glue = strpos($url, '?') !== false ? '&' : '?';
-        return $url . $glue . 'dl=0';
-    }
-    return $url;
 }
