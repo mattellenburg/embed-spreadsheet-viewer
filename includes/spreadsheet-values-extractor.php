@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Excel Values Extractor Function
  * 
@@ -12,7 +13,7 @@ if ( ! function_exists('WP_Filesystem') ) {
 WP_Filesystem();
 global $wp_filesystem;
 
-function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = null) {
+function esv_extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = null) {
     if (empty($excel_url) || empty($sheet_name)) {
         return new WP_Error('invalid_input', 'Excel URL and sheet name are required.');
     }
@@ -42,12 +43,12 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
             if ($old_flattened && file_exists($old_flattened)) wp_delete_file($old_flattened);
         }
         
-        $download_result = download_excel_file($excel_url, $original_file);
+        $download_result = esv_download_excel_file($excel_url, $original_file);
         if (is_wp_error($download_result)) {
             return $download_result;
         }
 
-        $extractor = new Excel_Values_Extractor($original_file, $sheet_name, $values_file);
+        $extractor = new ESV_Excel_Values_Extractor($original_file, $sheet_name, $values_file);
         $result = $extractor->extract();
 
         if (!$result) {
@@ -74,7 +75,7 @@ function extract_excel_values($excel_url, $sheet_name, $prefix = '', $post_id = 
     }
 }
 
-function download_excel_file($url, $destination) {
+function esv_download_excel_file($url, $destination) {
     $context = stream_context_create(['http' => ['timeout' => 300]]);
     $response = wp_remote_get($url, [
         'timeout'  => 300,
@@ -89,7 +90,7 @@ function download_excel_file($url, $destination) {
     return true;
 }
 
-class Excel_Values_Extractor {
+class ESV_Excel_Values_Extractor {
     private $inputFile, $sheetName, $outputFile, $tempDir;
     private $ns = [
         'main' => 'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
@@ -224,7 +225,7 @@ class Excel_Values_Extractor {
 add_action('esv_after_spreadsheet_save', function ($url, $sheet, $post_id) {
     if (empty($url) || empty($sheet)) return;
 
-    $result = extract_excel_values($url, $sheet, 'flattened_', $post_id);
+    $result = esv_extract_excel_values($url, $sheet, 'flattened_', $post_id);
 }, 10, 3);
 
 add_action('before_delete_post', function ($post_id) {

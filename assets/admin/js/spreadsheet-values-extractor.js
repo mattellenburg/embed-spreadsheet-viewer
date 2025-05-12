@@ -33,7 +33,7 @@ esv.ExcelValuesExtractor = (function($) {
                 excel_url: excelUrl,
                 sheet_name: sheetName,
                 prefix: prefix || '', // Optional prefix
-                nonce: MyPlugin.security_nonce // Assume this is set elsewhere in your admin.js
+                nonce: EmbedSpreadsheetViewerData.security_nonce // Assume this is set elsewhere in your admin.js
             },
             success: function(response) {
                 showLoading(false);

@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 function esv_register_spreadsheet_cpt() {
     register_post_type('esv_spreadsheet', [

@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -138,7 +139,7 @@ add_action('wp_ajax_esv_retry_flatten', function () {
         wp_send_json_error(['message' => 'Missing required data.']);
     }
 
-    $result = extract_excel_values($url, $worksheet, 'flattened_', $post_id);
+    $result = esv_extract_excel_values($url, $worksheet, 'flattened_', $post_id);
 
     if (is_wp_error($result)) {
         wp_send_json_error(['message' => $result->get_error_message()]);
@@ -176,7 +177,7 @@ function esv_retry_flatten_callback() {
         wp_send_json_error(['message' => 'Missing URL or post ID.']);
     }
 
-    $result = extract_excel_values($url, $sheet, 'flattened_', $post_id);
+    $result = esv_extract_excel_values($url, $sheet, 'flattened_', $post_id);
 
     if (is_wp_error($result)) {
         wp_send_json_error(['message' => $result->get_error_message()]);

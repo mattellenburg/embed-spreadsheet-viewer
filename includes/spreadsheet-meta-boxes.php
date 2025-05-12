@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Add metabox
 add_action('add_meta_boxes', 'esv_add_spreadsheet_meta_box');

@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 add_shortcode('spreadsheet', function ($atts) {
     $shortcode_start_time = microtime(true);

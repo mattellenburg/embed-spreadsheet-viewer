@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 function esv_admin_menu() {
     add_menu_page('Spreadsheets', 'Spreadsheets', 'manage_options', 'esv_spreadsheet_menu', 'esv_render_list_page', 'dashicons-media-spreadsheet', 6);
@@ -25,9 +26,9 @@ add_action('admin_enqueue_scripts', function ($hook) {
 /**
  * AJAX handler for processing Excel files
  */
-function process_excel_values_ajax() {
+function esv_process_excel_values_ajax() {
     // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce']), 'my_plugin_nonce'))) {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce']), 'esv_values_nonce'))) {
         wp_send_json_error(array('message' => 'Security check failed.'));
     }
     
@@ -54,7 +55,7 @@ function process_excel_values_ajax() {
     }
 
     // Process the Excel file
-    $result = extract_excel_values($excel_url, $sheet_name, $prefix);
+    $result = esv_extract_excel_values($excel_url, $sheet_name, $prefix);
     
     if (is_wp_error($result)) {
         wp_send_json_error(array('message' => $result->get_error_message()));
@@ -62,4 +63,4 @@ function process_excel_values_ajax() {
         wp_send_json_success($result);
     }
 }
-add_action('wp_ajax_process_excel_values', 'process_excel_values_ajax');
+add_action('esv_wp_ajax_process_excel_values', 'esv_process_excel_values_ajax');

@@ -51,9 +51,9 @@ add_action('admin_enqueue_scripts', function () {
             'nonce'   => wp_create_nonce('esv_ajax_preview'),
         ]);
 
-        wp_localize_script('esv-values-extractor', 'MyPlugin', [
+        wp_localize_script('esv-values-extractor', 'EmbedSpreadsheetViewerData', [
             'ajaxurl'        => admin_url('admin-ajax.php'),
-            'security_nonce' => wp_create_nonce('my_plugin_nonce'),
+            'security_nonce' => wp_create_nonce('esv_values_nonce'),
         ]);
     }
 });
